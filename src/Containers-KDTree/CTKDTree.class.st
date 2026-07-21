@@ -118,6 +118,56 @@ CTKDTree >> nearest: targetPoint at: currentNode bestNode: currentBest [
 	^ best
 ]
 
+{ #category : 'searching' }
+CTKDTree >> nearest: aPoint k: maxNeighbors [
+	| results |
+	"Acts as a bounded Max Heap, We store associations of (SquaredDistance -> Point)"
+	 "Sorting descending ensures the furthest worst point is always at the first index"
+	results := SortedCollection sortBlock: [ :a :b | a key > b key ].
+	
+	root ifNotNil: [ 
+		self nearest: aPoint k: maxNeighbors node: root depth: 1 results: results ].
+	
+	"Reverse the results at the end so the absolute closest point is first"
+	^ results reverse collect: [ :assoc | assoc value ]
+]
+
+{ #category : 'private' }
+CTKDTree >> nearest: targetPoint k: maxNeighbors node: aNode depth: currentDepth results: results [
+	| axis dist axisDist nextNode otherNode worstDistance |
+	
+	aNode ifNil: [ ^ self ].
+	
+	dist := self squaredDistanceBetween: targetPoint and: aNode point.
+	
+	"Manage the K-sized bounded collection"
+	results size < maxNeighbors ifTrue: [ 
+		results add: (dist -> aNode point).
+	] ifFalse: [ 
+		worstDistance := results first key.
+		dist < worstDistance ifTrue: [ 
+			results removeFirst. "Evict the furthest point"
+			results add: (dist -> aNode point).
+		].
+	].
+	
+	"Determine splitting axis and distances"
+	axis := ((currentDepth - 1) \\ dimensions) + 1.
+	axisDist := (targetPoint at: axis) - (aNode point at: axis).
+	
+	axisDist < 0 
+		ifTrue: [ nextNode := aNode left. otherNode := aNode right ]
+		ifFalse: [ nextNode := aNode right. otherNode := aNode left ].
+		
+	"Traverse the most promising branch first"
+	self nearest: targetPoint k: maxNeighbors node: nextNode depth: currentDepth + 1 results: results.
+	
+	"Does the bounding box intersect the splitting plane?"
+	(results size < maxNeighbors or: [ (axisDist * axisDist) < results first key ]) ifTrue: [ 
+		self nearest: targetPoint k: maxNeighbors node: otherNode depth: currentDepth + 1 results: results.
+	].
+]
+
 { #category : 'accessing' }
 CTKDTree >> root [
 	^ root
