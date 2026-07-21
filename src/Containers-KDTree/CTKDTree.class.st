@@ -76,6 +76,48 @@ CTKDTree >> isEmpty [
 	^ size = 0
 ]
 
+{ #category : 'searching' }
+CTKDTree >> nearest: aPoint [
+	self assert: [ aPoint size = dimensions ] description: 'Point dimensions must match tree dimensions'.
+	root ifNil: [ ^ nil ].
+	^ (self nearest: aPoint at: root bestNode: root) point
+]
+
+{ #category : 'private' }
+CTKDTree >> nearest: targetPoint at: currentNode bestNode: currentBest [
+	| currentAxis goesLeft best axisDistance currentDistance bestDistance |
+	
+	currentNode ifNil: [ ^ currentBest ].
+	
+	best := currentBest.
+	currentDistance := self squaredDistanceBetween: targetPoint and: currentNode point.
+	bestDistance := self squaredDistanceBetween: targetPoint and: best point.
+	
+	"Update best if the current node is closer"
+	currentDistance < bestDistance ifTrue: [ best := currentNode ].
+	
+	currentAxis := currentNode axis.
+	goesLeft := (targetPoint at: currentAxis) < (currentNode point at: currentAxis).
+	
+	"Explore the most promising branch first"
+	best := goesLeft 
+		ifTrue: [ self nearest: targetPoint at: currentNode left bestNode: best ]
+		ifFalse: [ self nearest: targetPoint at: currentNode right bestNode: best ].
+		
+	"Unwind and check if we need to explore the other branch"
+	bestDistance := self squaredDistanceBetween: targetPoint and: best point.
+	axisDistance := (targetPoint at: currentAxis) - (currentNode point at: currentAxis).
+	
+	"If the distance to the splitting plane is less than our best distance, a closer point might exist on the other side"
+	(axisDistance * axisDistance) < bestDistance ifTrue: [
+		best := goesLeft 
+			ifTrue: [ self nearest: targetPoint at: currentNode right bestNode: best ]
+			ifFalse: [ self nearest: targetPoint at: currentNode left bestNode: best ]
+	].
+	
+	^ best
+]
+
 { #category : 'accessing' }
 CTKDTree >> root [
 	^ root
@@ -100,4 +142,15 @@ CTKDTree >> search: aPoint at: aNode [
 { #category : 'accessing' }
 CTKDTree >> size [
 	^ size
+]
+
+{ #category : 'private' }
+CTKDTree >> squaredDistanceBetween: point1 and: point2 [
+	| sum diff |
+	sum := 0.
+	1 to: dimensions do: [ :i |
+		diff := (point1 at: i) - (point2 at: i).
+		sum := sum + (diff * diff)
+	].
+	^ sum
 ]
