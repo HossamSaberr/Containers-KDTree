@@ -95,6 +95,38 @@ CTKDTreeTest >> testDimensionMismatchThrowsError [
 ]
 
 { #category : 'tests' }
+CTKDTreeTest >> testDuplicateInsertions [
+	| results |
+	
+	"Insert the exact same point three times"
+	tree add: #(5 5).
+	tree add: #(5 5).
+	tree add: #(5 5).
+	
+	"Prove the tree actually created three distinct nodes"
+	self assert: tree size equals: 3.
+	
+	"Prove that a spatial query can successfully retrieve all duplicates"
+	results := tree nearest: #(5 5) k: 3.
+	
+	self assert: results size equals: 3.
+	self assert: results first equals: #(5 5).
+	self assert: results second equals: #(5 5).
+	self assert: results third equals: #(5 5).
+]
+
+{ #category : 'tests' }
+CTKDTreeTest >> testDuplicates [
+	tree add: #(2 3).
+	tree add: #(2 3). 
+	tree add: #(5 4).
+
+	self assert: tree size equals: 3.
+	self assert: (tree includes: #(2 3)).
+	self assert: (tree nearest: #(2 3)) equals: #(2 3).
+]
+
+{ #category : 'tests' }
 CTKDTreeTest >> testEmptyTree [
 	self assert: tree isEmpty.
 	self assert: tree size equals: 0.
@@ -153,6 +185,41 @@ CTKDTreeTest >> testNearest [
 	"Distance to (4,7) = 0^2 + -2^2 = 4"
 	"Closest should be (5 4)"
 	self assert: (tree nearest: #(4 5)) equals: #(5 4).
+]
+
+{ #category : 'tests' }
+CTKDTreeTest >> testNearestK [
+	| results |
+	"load 7 distinct points"
+	tree addAll: { #(1 1). #(2 3). #(5 4). #(9 6). #(4 7). #(8 1). #(7 2) }.
+	
+	"Query the 3 nearest neighbors to (3, 3)"
+	results := tree nearest: #(3 3) k: 3.
+	
+	"Expected order based on squared distances to (3,3):" 
+	 "1. (2,3) -> distance 1"
+	 "2. (5,4) -> distance 5"
+	 "3. (1,1) -> distance 8"
+	
+	self assert: results size equals: 3.
+	self assert: results first equals: #(2 3).
+	self assert: results second equals: #(5 4).
+	self assert: results third equals: #(1 1).
+]
+
+{ #category : 'tests' }
+CTKDTreeTest >> testNearestKLargerThanTree [
+	| results |
+	tree addAll: { #(1 1). #(2 2). #(3 3) }.
+	
+	"Requesting 5 neighbors from a tree that only has 3 points"
+	results := tree nearest: #(0 0) k: 5.
+	
+	"It should safely return all 3 points, sorted by distance, without crashing"
+	self assert: results size equals: 3.
+	self assert: results first equals: #(1 1).
+	self assert: results second equals: #(2 2).
+	self assert: results third equals: #(3 3).
 ]
 
 { #category : 'tests' }
