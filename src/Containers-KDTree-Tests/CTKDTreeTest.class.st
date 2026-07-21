@@ -103,6 +103,16 @@ CTKDTreeTest >> testEmptyTree [
 ]
 
 { #category : 'tests' }
+CTKDTreeTest >> testExactPointAsNearest [
+	tree add: #(2 3).
+	tree add: #(5 4).
+	tree add: #(9 6).
+
+	self assert: (tree nearest: #(5 4)) equals: #(5 4).
+	self assert: (tree nearest: #(9 6)) equals: #(9 6).
+]
+
+{ #category : 'tests' }
 CTKDTreeTest >> testIncludes [
 	tree add: #(2 3).
 	tree add: #(5 4).
@@ -121,6 +131,45 @@ CTKDTreeTest >> testIncludes [
 ]
 
 { #category : 'tests' }
+CTKDTreeTest >> testNearest [
+	tree add: #(2 3).
+	tree add: #(5 4).
+	tree add: #(9 6).
+	tree add: #(4 7).
+	tree add: #(8 1).
+	tree add: #(7 2).
+	
+	"Query point: (9 2)"
+	"Distance to (8,1) = 1^2 + 1^2 = 2"
+	"Distance to (7,2) = 2^2 + 0^2 = 4"
+	"Closest should be (8 1)"
+	self assert: (tree nearest: #(9 2)) equals: #(8 1).
+	
+	"Query point: (2 2), Closest should be (2 3)"
+	self assert: (tree nearest: #(2 2)) equals: #(2 3).
+	
+	"Query point: (4 5)"
+	"Distance to (5,4) = 1^2 + -1^2 = 2"
+	"Distance to (4,7) = 0^2 + -2^2 = 4"
+	"Closest should be (5 4)"
+	self assert: (tree nearest: #(4 5)) equals: #(5 4).
+]
+
+{ #category : 'tests' }
+CTKDTreeTest >> testNearestRequiresBacktracking [
+	"Forces the algorithm to cross the splitting plane to find the true nearest neighbor"
+	tree add: #(50 50). "Root, splits on X"
+	tree add: #(20 50). "Left child"
+	tree add: #(80 50). "Right child"
+	tree add: #(45 60). "Left child's right child"
+
+	"Query: (52 60)"
+	"Greedily, it will go right to (80 50) because 52 > 50"
+	"But (45 60) is much closer! It must cross the X=50 plane to find it"
+	self assert: (tree nearest: #(52 60)) equals: #(45 60).
+]
+
+{ #category : 'tests' }
 CTKDTreeTest >> testNegativeCoordinates [
 	tree add: #(-2 -3).
 	tree add: #(-5 4).
@@ -129,4 +178,34 @@ CTKDTreeTest >> testNegativeCoordinates [
 	self assert: (tree includes: #(-5 4)).
 	self assert: (tree nearest: #(-3 -4)) equals: #(-2 -3).
 	self assert: (tree nearest: #(8 -5)) equals: #(9 -6).
+]
+
+{ #category : 'tests' }
+CTKDTreeTest >> testRandomizedPointsAgainstNaiveSearch [
+	| random points queryPoint bruteForceClosest minDistance currentDist kdClosest |
+	random := Random new.
+	points := OrderedCollection new.
+	
+	500 timesRepeat: [
+		| pt |
+		pt := Array with: (random nextInteger: 1000) with: (random nextInteger: 1000).
+		points add: pt.
+		tree add: pt.
+	].
+	
+	queryPoint := Array with: (random nextInteger: 1000) with: (random nextInteger: 1000).
+	
+	minDistance := Float infinity.
+	bruteForceClosest := nil.
+	points do: [ :pt |
+		currentDist := ((pt first - queryPoint first) squared) + ((pt second - queryPoint second) squared).
+		currentDist < minDistance ifTrue: [
+			minDistance := currentDist.
+			bruteForceClosest := pt.
+		]
+	].
+	
+	kdClosest := tree nearest: queryPoint.
+	
+	self assert: kdClosest equals: bruteForceClosest.
 ]
