@@ -30,3 +30,31 @@ CTKDTree >> addAll: aCollection [
 	aCollection do: [ :each | self add: each ].
 	^ self
 ]
+
+{ #category : 'accessing' }
+CTKDTree >> dimensions: anInteger [
+	dimensions := anInteger
+]
+
+{ #category : 'initialization' }
+CTKDTree >> initialize [
+	super initialize.
+	size := 0.
+	root := nil.
+	dimensions := 2. "Default to 2D"
+]
+
+{ #category : 'testing' }
+CTKDTree >> isEmpty [
+	^ size = 0
+]
+
+{ #category : 'accessing' }
+CTKDTree >> root [
+	^ root
+]
+
+{ #category : 'accessing' }
+CTKDTree >> size [
+	^ size
+]
